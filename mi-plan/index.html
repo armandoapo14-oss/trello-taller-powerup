@@ -286,6 +286,17 @@ const dim=(y,m)=>new Date(y,m,0).getDate();
 const clampDay=(y,m,day)=>y+"-"+pad(m)+"-"+pad(Math.min(Math.max(1,day),dim(y,m)));
 const prevM=(y,m)=>m===1?[y-1,12]:[y,m-1], nextM=(y,m)=>m===12?[y+1,1]:[y,m+1];
 function periodRange(s){
+  const per=S.config.periodo||"mensual";
+  if(per==="semanal"||per==="catorcenal") return rawPeriod(s);
+  // Quincenal y mensual: si el sueldo llegó hasta 4 días antes de la fecha normal, el periodo arranca ese día
+  const sue=MOVS.filter(m=>m.tipo==="ingreso"&&m.cat==="Sueldo").map(m=>m.fecha);
+  const early=d=>{ let best=null; const lo=addDays(d,-4); for(const f of sue){ if(f<d&&f>=lo&&(!best||f<best)) best=f; } return best; };
+  const adj=P=>({start:early(P.start)||P.start, end:early(P.end)||P.end});
+  const P=rawPeriod(s); let A=adj(P);
+  if(s>=A.end) A=adj(rawPeriod(P.end));
+  return A;
+}
+function rawPeriod(s){
   const cf=S.config, per=cf.periodo||"mensual";
   if(per==="semanal"||per==="catorcenal"){ const len=per==="semanal"?7:14, ref=lastSueldo()||cf.fechaRef||todayStr(); const k=Math.floor(Math.round((pD(s)-pD(ref))/864e5)/len); const start=addDays(ref,k*len); return {start,end:addDays(start,len)}; }
   const [y,m]=s.split("-").map(Number);
@@ -302,7 +313,7 @@ function lastSueldo(){ let best=""; for(const m of MOVS){ if(m.tipo==="ingreso"&
 const shiftPeriod=(s,k)=>{ const P=periodRange(s); return k>0?P.end:addDays(P.start,-1); };
 const inPeriod=f=>{ const P=periodRange(ym); return f>=P.start&&f<P.end; };
 function periodLabel(s){ const P=periodRange(s);
-  if((S.config.periodo||"mensual")==="mensual" && P.start.slice(8)==="01") return monthLabel(P.start.slice(0,7));
+  if((S.config.periodo||"mensual")==="mensual" && P.start.slice(8)==="01" && P.end.slice(8)==="01") return monthLabel(P.start.slice(0,7));
   const f=x=>{ const d=pD(x); return d.getDate()+" "+MESES[d.getMonth()].slice(0,3); }; return f(P.start)+" – "+f(addDays(P.end,-1)); }
 const PPM={mensual:1,quincenal:2,catorcenal:26/12,semanal:52/12};
 const ppm=()=>PPM[S.config.periodo||"mensual"]||1;
