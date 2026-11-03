@@ -441,12 +441,21 @@ function render(){
   v.innerHTML = ({inicio:vInicio, movs:vMovs, presu:vPresu, fondo:vFondo, plan:vPlan, familia:vFamilia}[tab]||vInicio)(c);
 }
 
+const isPlainMonth=()=>(S.config.periodo||"mensual")==="mensual"&&(+S.config.diaMes||1)===1;
+function paysInMonth(m){ const P=periodRange(m+"-01"); let n=P.start.slice(0,7)===m?1:0, d=P.end, g=0; while(d.slice(0,7)===m&&g++<40){ n++; d=periodRange(d).end; } return Math.max(n,1); }
+function monthData(){
+  const cf=S.config, m=ymOf(ym), mov=MOVS.filter(x=>ymOf(x.fecha)===m), sum=f=>mov.filter(f).reduce((a,x)=>a+(+x.monto||0),0);
+  const n=paysInMonth(m), base=cf.ingreso*n, real={}, bySub={};
+  ["nec","ocio","aho"].forEach(k=>real[k]=sum(x=>x.tipo!=="ingreso"&&blockOf(x.cat)===k));
+  mov.forEach(x=>{ if(x.tipo!=="ingreso") bySub[x.cat]=(bySub[x.cat]||0)+(+x.monto||0); });
+  return {m,n,base,real,bySub,cobrado:sum(x=>x.tipo==="ingreso"),metas:{nec:base*cf.pNec/100,ocio:base*cf.pOcio/100,aho:base*cf.pAho/100}};
+}
 function monthCard(){
-  const cf=S.config; if((cf.periodo||"mensual")==="mensual" && (+cf.diaMes||1)===1) return "";
-  const m=ymOf(ym), mov=MOVS.filter(x=>ymOf(x.fecha)===m), sum=f=>mov.filter(f).reduce((a,x)=>a+(+x.monto||0),0), base=cf.ingreso*ppm();
-  const r={nec:sum(x=>x.tipo!=="ingreso"&&blockOf(x.cat)==="nec"), ocio:sum(x=>x.tipo!=="ingreso"&&blockOf(x.cat)==="ocio"), aho:sum(x=>x.tipo!=="ingreso"&&blockOf(x.cat)==="aho"), mNec:base*cf.pNec/100, mOcio:base*cf.pOcio/100, mAho:base*cf.pAho/100};
+  if(isPlainMonth()) return "";
+  const cf=S.config, md=monthData(), m=md.m;
+  const r={nec:md.real.nec, ocio:md.real.ocio, aho:md.real.aho, mNec:md.metas.nec, mOcio:md.metas.ocio, mAho:md.metas.aho};
   return `<section class="card"><div class="sec-head"><h2>Objetivo mensual</h2><span class="hint" style="text-transform:capitalize">${monthLabel(m)}</span></div>
-   <div class="hint num" style="margin-bottom:12px">Del 1 al ${dim(+m.slice(0,4),+m.slice(5,7))} · cobrado ${fmt(sum(x=>x.tipo==="ingreso"))} · meta del mes ${fmt(base)} (${ppm().toFixed(1).replace(".0","")} pagos de ${fmt(cf.ingreso)})</div>
+   <div class="hint num" style="margin-bottom:12px">Del 1 al ${dim(+m.slice(0,4),+m.slice(5,7))} · cobrado ${fmt(md.cobrado)} · meta del mes ${fmt(md.base)} (${md.n} ${md.n===1?"pago":"pagos"} de ${fmt(cf.ingreso)} este mes)</div>
    <div class="bars">${miniBars(r)}</div></section>`;
 }
 function barBlock(k,c,compact){
@@ -514,10 +523,11 @@ function vPresu(c){
   const cf=S.config;
   return `<section class="card"><div class="sec-head"><h2>Metas ${perWord()}</h2><button class="link" data-act="cfg">Cambiar %</button></div>
    <div class="hint num">Ingreso por ${perName()} ${fmt(cf.ingreso)} · reparto ${cf.pNec}/${cf.pOcio}/${cf.pAho}</div></section>`+monthCard()+
-  ["nec","ocio","aho"].map(k=>{ const b=BLOCKS[k], meta=c.metas[k];
-    return `<section class="card">${barBlock(k,c)}<div style="margin-top:12px">${b.cats.map(([n,p0])=>{ const p=subP(n,p0), m=meta*p/100, r=c.bySub[n]||0, w=Math.min(100,m>0?r/m*100:0), over=k!=="aho"&&r>m&&m>0;
-      return `<div class="sub-row"><span class="n">${n} <span class="hint num">${p}%</span></span><span class="v num"><b>${fmt(r)}</b> / ${fmt(m)}</span><div class="track"><div class="fill" style="width:${w}%;background:${over?"var(--bad)":b.color}"></div></div></div>`;}).join("")}</div><button class="btn ghost block" style="margin-top:12px" data-subedit="${k}">Ajustar % por tema</button></section>`;}).join("")+
-  `<p class="hint">Cada tema toma un porcentaje de su bloque (por ejemplo, Vivienda = 34% de Necesidades). Cámbialo con «Ajustar % por tema»; el reparto general 55/25/20 se cambia en Ajustes.</p>`;
+  (()=>{ const md=isPlainMonth()?null:monthData(); return (md?`<div class="label" style="margin-top:6px">Detalle por tema · mes completo (${monthLabel(md.m)})</div>`:"")+
+  ["nec","ocio","aho"].map(k=>{ const b=BLOCKS[k], src=md?{real:md.real,metas:md.metas,bySub:md.bySub}:c, meta=src.metas[k];
+    return `<section class="card">${barBlock(k,src)}<div style="margin-top:12px">${b.cats.map(([n,p0])=>{ const p=subP(n,p0), m=meta*p/100, r=src.bySub[n]||0, w=Math.min(100,m>0?r/m*100:0), over=k!=="aho"&&r>m&&m>0;
+      return `<div class="sub-row"><span class="n">${n} <span class="hint num">${p}%</span></span><span class="v num"><b>${fmt(r)}</b> / ${fmt(m)}</span><div class="track"><div class="fill" style="width:${w}%;background:${over?"var(--bad)":b.color}"></div></div></div>`;}).join("")}</div><button class="btn ghost block" style="margin-top:12px" data-subedit="${k}">Ajustar % por tema</button></section>`;}).join(""); })()+
+  `<p class="hint">Cada tema toma un porcentaje de su bloque (por ejemplo, Vivienda = 34% de Necesidades). ${isPlainMonth()?"":"Los temas se miden por mes completo porque la renta y los servicios se pagan una vez al mes; los tres bloques de arriba se miden por cada pago. "}Cámbialos con «Ajustar % por tema»; el reparto general se cambia en Ajustes.</p>`;
 }
 
 function vFondo(c){
