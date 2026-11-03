@@ -96,7 +96,11 @@ h2{font-family:var(--display);font-weight:800;font-size:18px;margin:0;letter-spa
 .st-ico.curso{border-color:var(--warn);background:conic-gradient(var(--warn) 0 50%,transparent 50% 100%)}
 .st-ico.hecha{border-color:var(--ok);background:var(--ok)}
 .st-ico svg{width:12px;height:12px;stroke:#fff}
-.task .t{flex:1;min-width:0}
+.task .t{flex:1;min-width:0;cursor:pointer;border-radius:8px}
+.task .t:hover .n{text-decoration:underline;text-decoration-color:var(--line)}
+.task .t .nota{font-size:12.5px;color:var(--ink);background:var(--soft);border-radius:8px;padding:6px 8px;margin-top:6px;white-space:pre-wrap}
+.edit-ico{display:inline-block;width:13px;height:13px;margin-left:4px;vertical-align:-1px;stroke:var(--muted)}
+.add-task{margin-top:10px;border:1px dashed var(--line);background:none;border-radius:12px;padding:10px;width:100%;font-weight:700;color:var(--accent)}
 .task .t .n{font-weight:600;font-size:14.5px}
 .task.hecha .t .n{color:var(--muted);text-decoration:line-through}
 .task .t .m{font-size:12.5px;color:var(--muted);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -252,7 +256,7 @@ const PLAN = [
   ["p15","Definir cómo invertiré (plazo y riesgo), solo con fondo ≥ 3 meses","2027-01-24","Reglas de inversión escritas"],
   ["p16","Evaluación del día 90 y plan del siguiente trimestre","2027-01-31","Siguiente trimestre definido"]]}
 ];
-const DEF = {config:{ingreso:20000, pNec:55, pOcio:25, pAho:20, costoVida:0, fondoInicial:0, mesesObjetivo:3, ejemplo:true, sub:{}, nombre:"", deviceId:""}, plan:{}, habits:{}, metas:[], familia:{}};
+const DEF = {config:{ingreso:20000, pNec:55, pOcio:25, pAho:20, costoVida:0, fondoInicial:0, mesesObjetivo:3, ejemplo:true, sub:{}, nombre:"", deviceId:""}, plan:{}, habits:{}, metas:[], familia:{}, planEdits:{}, planCustom:[]};
 
 // ---------- Utilidades ----------
 const $ = s => document.querySelector(s);
@@ -380,7 +384,12 @@ function blockStatus(k, real, meta){
   const r=real/meta; if(r>1) return ["bad","Excedido"]; if(r>=.85) return ["warn","Cerca del tope"]; return ["ok","Dentro del tope"];
 }
 function subP(n,def){ const s=S.config.sub; return (s&&s[n]!=null&&s[n]!=="")?+s[n]:def; }
-function planItems(){ return PLAN.flatMap(p=>p.items.map(i=>({id:i[0],t:i[1],d:i[2],e:i[3],fase:p.f,st:S.plan[i[0]]||"pendiente"}))); }
+function planItems(){
+  const ed=S.planEdits||{};
+  const base=PLAN.flatMap(p=>p.items.map(i=>({id:i[0],t:i[1],d:i[2],e:i[3],fase:p.f,custom:false})));
+  const cus=(S.planCustom||[]).map(c=>Object.assign({},c,{custom:true}));
+  return base.concat(cus).map(i=>Object.assign(i,ed[i.id]||{},{st:S.plan[i.id]||"pendiente"})).filter(i=>!i.hidden);
+}
 
 // ---------- Render ----------
 function render(){
@@ -432,7 +441,7 @@ function taskRow(i){
   const ico = i.st==="hecha"?`<span class="st-ico hecha">${ICON.check}</span>`: i.st==="curso"?`<span class="st-ico curso"></span>`:`<span class="st-ico"></span>`;
   const lbl = {pendiente:"Pendiente",curso:"En curso",hecha:"Hecha"}[i.st];
   return `<div class="task ${i.st}"><button class="st" data-task="${i.id}" aria-label="Cambiar estado: ${lbl}">${ico}</button>
-   <div class="t"><div class="n">${esc(i.t)}</div><div class="m num"><span>${dayLabel(i.d)}</span>${late?`<span class="pill bad">Vencida</span>`:""}${i.st==="curso"?`<span class="pill warn">En curso</span>`:""}<span>· ${esc(i.e)}</span></div></div></div>`;
+   <div class="t" data-edit="${esc(i.id)}" role="button" tabindex="0" aria-label="Editar: ${esc(i.t)}"><div class="n">${esc(i.t)}<svg class="edit-ico" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></div><div class="m num"><span>${i.d?dayLabel(i.d):"Sin fecha"}</span>${late&&i.d?`<span class="pill bad">Vencida</span>`:""}${i.st==="curso"?`<span class="pill warn">En curso</span>`:""}${i.e?`<span>· ${esc(i.e)}</span>`:""}</div>${i.nota?`<div class="nota">${esc(i.nota)}</div>`:""}</div></div>`;
 }
 
 function vMovs(c){
@@ -504,9 +513,10 @@ function vPlan(){
   const items=planItems(), done=items.filter(i=>i.st==="hecha").length, p=done/items.length;
   const R=26, C=2*Math.PI*R;
   return `<section class="card progress-big"><svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" stroke="var(--soft)"/><circle cx="32" cy="32" r="${R}" stroke="var(--accent)" stroke-dasharray="${C*p} ${C}" stroke-linecap="round" transform="rotate(-90 32 32)"/></svg>
-    <div><div class="label">Plan de 90 días · 2 nov – 31 ene</div><div style="font-family:var(--display);font-weight:800;font-size:24px" class="num">${done} de ${items.length} hechas</div><div class="hint">Toca el círculo de cada acción: pendiente → en curso → hecha.</div></div></section>`+
-  PLAN.map(ph=>{ const its=items.filter(i=>i.fase===ph.f); const d=its.filter(i=>i.st==="hecha").length;
-    return `<section class="card phase"><div class="phase-head"><h2>${ph.f.split(" · ")[0]}</h2><span class="hint num">${ph.f.split(" · ")[1]} · ${d}/${its.length}</span></div>${its.map(taskRow).join("")}</section>`;}).join("");
+    <div><div class="label">Plan de 90 días · 2 nov – 31 ene</div><div style="font-family:var(--display);font-weight:800;font-size:24px" class="num">${done} de ${items.length} hechas</div><div class="hint">Toca el círculo para cambiar el estado. Toca el texto para editar la acción.</div></div></section>`+
+  PLAN.map((ph,pi)=>{ const its=items.filter(i=>i.fase===ph.f).sort((a,b)=>(a.d||"9").localeCompare(b.d||"9")); const d=its.filter(i=>i.st==="hecha").length;
+    return `<section class="card phase"><div class="phase-head"><h2>${ph.f.split(" · ")[0]}</h2><span class="hint num">${ph.f.split(" · ")[1]} · ${d}/${its.length}</span></div>${its.map(taskRow).join("")||`<div class="hint">Sin acciones en esta etapa.</div>`}<button class="add-task" data-addtask="${pi}">+ Agregar acción</button></section>`;}).join("")+
+  ((Object.keys(S.planEdits||{}).length||(S.planCustom||[]).length)?`<button class="btn ghost block" data-act="plan-reset">Volver al plan original</button>`:"");
 }
 
 // ---------- Familia ----------
@@ -553,6 +563,35 @@ function vFamilia(){
       <div style="margin-top:10px"><div class="kv"><span>Fondo</span><b class="num">${fmt(r.fondo)} · ${r.cobertura||0} meses</b></div><div class="kv"><span>Plan 90 días</span><b class="num">${r.plan||0} de ${r.planTotal||16}</b></div><div class="kv"><span>Hábitos últimos 7 días</span><b class="num">${r.habitos||0}%</b></div></div></div>`; }).join("")
     :`<div class="empty">Cuando alguien te mande su resumen por WhatsApp, copia el mensaje completo y toca «Agregar resumen».</div>`}</section>
   <section class="card"><h2>Cómo se usa en familia</h2><div class="hint" style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><span>1. Cada integrante abre el enlace de la app en su teléfono y la agrega a su pantalla de inicio. Sus datos se quedan en su teléfono.</span><span>2. Cuando quiera, escribe su nombre aquí y toca <b>Enviar mi resumen</b>; se abre WhatsApp con el mensaje listo.</span><span>3. Quien lo recibe copia el mensaje completo y lo pega en <b>Agregar resumen</b>. Si la misma persona manda uno nuevo, se actualiza su tarjeta.</span></div></section>`;
+}
+function sheetTask(id, phaseIdx){
+  const nuevo = id==null; const it = nuevo ? {id:"c"+uid(), t:"", d:"", e:"", nota:"", fase:PLAN[phaseIdx].f, custom:true} : planItems().find(x=>x.id===id);
+  if(!it) return;
+  let st = nuevo ? "pendiente" : (S.plan[it.id]||"pendiente");
+  openSheet(`<div class="sheet-head"><h2>${nuevo?"Nueva acción":"Editar acción"}</h2><button class="close" data-close aria-label="Cerrar">×</button></div>
+   <div class="hint">${esc(it.fase)}</div>
+   <div class="field"><label for="tkT">Acción</label><input class="input" id="tkT" maxlength="90" value="${esc(it.t)}" placeholder="Qué vas a hacer"></div>
+   <div class="grid2"><div class="field"><label for="tkD">Fecha límite</label><input class="input" type="date" id="tkD" value="${esc(it.d||"")}"></div>
+   <div class="field"><label for="tkE">Entregable</label><input class="input" id="tkE" maxlength="60" value="${esc(it.e||"")}" placeholder="Cómo sé que quedó"></div></div>
+   <div class="field"><label for="tkN">Notas</label><textarea class="input" id="tkN" rows="3" maxlength="300" placeholder="Montos, nombres, pendientes…" style="min-height:80px">${esc(it.nota||"")}</textarea></div>
+   <div class="field"><label>Estado</label><div class="seg" id="tkS">${[["pendiente","Pendiente"],["curso","En curso"],["hecha","Hecha"]].map(([k,l])=>`<button data-s="${k}" aria-pressed="${k===st}">${l}</button>`).join("")}</div></div>
+   <div class="err" id="tkErr"></div>
+   <button class="btn primary block" id="tkSave">${nuevo?"Agregar al plan":"Guardar cambios"}</button>
+   ${nuevo?"":`<div id="tkDelZone"><button class="btn ghost block" id="tkDel">${it.custom?"Eliminar acción":"Quitar del plan"}</button></div>`}`, sh=>{
+    sh.querySelector("#tkS").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; st=b.dataset.s; sh.querySelectorAll("#tkS button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.s===st)); });
+    if(nuevo) setTimeout(()=>sh.querySelector("#tkT").focus(),50);
+    sh.querySelector("#tkSave").addEventListener("click",()=>{
+      const v={t:sh.querySelector("#tkT").value.trim(), d:sh.querySelector("#tkD").value, e:sh.querySelector("#tkE").value.trim(), nota:sh.querySelector("#tkN").value.trim()};
+      if(!v.t){ sh.querySelector("#tkErr").textContent="Escribe qué vas a hacer."; return; }
+      if(it.custom){ const list=(S.planCustom||[]).filter(c=>c.id!==it.id); list.push({id:it.id,fase:it.fase,t:v.t,d:v.d,e:v.e,nota:v.nota}); S.planCustom=list; }
+      else { S.planEdits=Object.assign({},S.planEdits||{}); S.planEdits[it.id]=Object.assign({},S.planEdits[it.id]||{},v); }
+      S.plan[it.id]=st; saveMain(); closeSheet(); render(); toast(nuevo?"Acción agregada":"Acción actualizada");
+    });
+    const del=sh.querySelector("#tkDel");
+    if(del) del.addEventListener("click",()=>{ sh.querySelector("#tkDelZone").innerHTML=`<p class="hint" style="margin:0 0 8px">${it.custom?"Se borra esta acción.":"La acción se oculta. Puedes recuperarla con «Volver al plan original»."}</p><div class="grid2"><button class="btn ghost" data-close>Cancelar</button><button class="btn danger" id="tkDel2">${it.custom?"Eliminar":"Quitar"}</button></div>`;
+      sh.querySelector("#tkDel2").addEventListener("click",()=>{ if(it.custom) S.planCustom=(S.planCustom||[]).filter(c=>c.id!==it.id); else { S.planEdits=Object.assign({},S.planEdits||{}); S.planEdits[it.id]=Object.assign({},S.planEdits[it.id]||{},{hidden:true}); } delete S.plan[it.id]; saveMain(); closeSheet(); render(); toast(it.custom?"Acción eliminada":"Acción quitada del plan"); });
+    });
+  });
 }
 function sheetSend(){
   if(!(S.config.nombre||"").trim()){ toast("Primero escribe tu nombre"); const i=$("#famName"); i&&i.focus(); return; }
@@ -792,8 +831,11 @@ async function exportCSV(){
 }
 
 // ---------- Eventos ----------
+document.addEventListener("keydown",e=>{ const ed=e.target.closest&&e.target.closest("[data-edit]"); if(ed&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); sheetTask(ed.dataset.edit); } });
 document.addEventListener("click",e=>{
+  const ed=e.target.closest("[data-edit]"); if(ed&&!ed.closest("#sheetRoot")){ sheetTask(ed.dataset.edit); return; }
   const t=e.target.closest("button"); if(!t||t.closest("#sheetRoot")) return;
+  if(t.dataset.addtask!=null){ sheetTask(null,+t.dataset.addtask); return; }
   if(t.dataset.tab){ tab=t.dataset.tab; try{localStorage.setItem("mpf_tab",tab)}catch(_){} render(); window.scrollTo(0,0); return; }
   if(t.dataset.go){ tab=t.dataset.go; try{localStorage.setItem("mpf_tab",tab)}catch(_){} render(); window.scrollTo(0,0); return; }
   if(t.dataset.habit!=null){ const d=todayStr(); const h=(S.habits[d]||[0,0,0,0]).slice(); h[+t.dataset.habit]=h[+t.dataset.habit]?0:1; S.habits[d]=h; saveMain(); render(); return; }
@@ -805,6 +847,7 @@ document.addEventListener("click",e=>{
   if(t.dataset.rm){ if(t.dataset.armed){ membersCol&&membersCol.doc(t.dataset.rm).delete().catch(()=>toast("No se pudo quitar")); } else { t.dataset.armed="1"; t.textContent="¿Quitar? Toca otra vez"; t.style.color="var(--bad)"; } return; }
   const a=t.dataset.act;
   if(a==="send-sum"){ sheetSend(); return; }
+  if(a==="plan-reset"){ if(t.dataset.armed){ S.planEdits={}; S.planCustom=[]; saveMain(); render(); toast("Plan original restaurado"); } else { t.dataset.armed="1"; t.textContent="¿Seguro? Se pierden tus cambios al plan. Toca otra vez"; } return; }
   if(a==="backup"){ backupAll(); return; }
   if(a==="restore"){ pickRestore(); return; }
   if(a==="paste-sum"){ sheetPaste(); return; }
