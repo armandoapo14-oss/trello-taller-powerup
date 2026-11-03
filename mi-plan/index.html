@@ -287,7 +287,7 @@ const clampDay=(y,m,day)=>y+"-"+pad(m)+"-"+pad(Math.min(Math.max(1,day),dim(y,m)
 const prevM=(y,m)=>m===1?[y-1,12]:[y,m-1], nextM=(y,m)=>m===12?[y+1,1]:[y,m+1];
 function periodRange(s){
   const cf=S.config, per=cf.periodo||"mensual";
-  if(per==="semanal"||per==="catorcenal"){ const len=per==="semanal"?7:14, ref=cf.fechaRef||"2026-11-02"; const k=Math.floor(Math.round((pD(s)-pD(ref))/864e5)/len); const start=addDays(ref,k*len); return {start,end:addDays(start,len)}; }
+  if(per==="semanal"||per==="catorcenal"){ const len=per==="semanal"?7:14, ref=lastSueldo()||cf.fechaRef||todayStr(); const k=Math.floor(Math.round((pD(s)-pD(ref))/864e5)/len); const start=addDays(ref,k*len); return {start,end:addDays(start,len)}; }
   const [y,m]=s.split("-").map(Number);
   if(per==="quincenal"){ let q1=+cf.q1||15, q2=+cf.q2||30; if(q1>q2){ const t=q1; q1=q2; q2=t; }
     const a=clampDay(y,m,q1), b=clampDay(y,m,q2);
@@ -298,6 +298,7 @@ function periodRange(s){
   if(s>=a){ const [ny,nm]=nextM(y,m); return {start:a,end:clampDay(ny,nm,day)}; }
   const [py,pm]=prevM(y,m); return {start:clampDay(py,pm,day),end:a};
 }
+function lastSueldo(){ let best=""; for(const m of MOVS){ if(m.tipo==="ingreso"&&m.cat==="Sueldo"&&m.fecha>best) best=m.fecha; } return best; }
 const shiftPeriod=(s,k)=>{ const P=periodRange(s); return k>0?P.end:addDays(P.start,-1); };
 const inPeriod=f=>{ const P=periodRange(ym); return f>=P.start&&f<P.end; };
 function periodLabel(s){ const P=periodRange(s);
@@ -751,7 +752,7 @@ function sheetCfg(){
   const cf=S.config;
   openSheet(`<div class="sheet-head"><h2>Ajustes</h2><button class="close" data-close aria-label="Cerrar">×</button></div>
    <div class="field"><label for="sPer">¿Cada cuánto te pagan?</label><select class="input" id="sPer">${[["semanal","Cada semana"],["catorcenal","Cada 14 días (catorcenal)"],["quincenal","Cada quincena"],["mensual","Una vez al mes"]].map(([k,l])=>`<option value="${k}" ${k===(cf.periodo||"mensual")?"selected":""}>${l}</option>`).join("")}</select></div>
-   <div class="field" id="fRef"><label for="sRef">Fecha de tu último pago</label><input class="input" type="date" id="sRef" value="${esc(cf.fechaRef||todayStr())}"><span class="hint">Con esta fecha la app calcula tus siguientes pagos.</span></div>
+   <div class="field" id="fRef"><label for="sRef">Fecha de tu último pago</label><input class="input" type="date" id="sRef" value="${esc(lastSueldo()||cf.fechaRef||todayStr())}" ${lastSueldo()?"disabled":""}><span class="hint">${lastSueldo()?"Se toma sola de tu último sueldo registrado.":"Cuando registres tu sueldo, la app tomará esa fecha sola."}</span></div>
    <div class="grid2" id="fQ"><div class="field"><label for="sQ1">Primer día de pago</label><input class="input num" id="sQ1" inputmode="numeric" value="${cf.q1||15}"></div><div class="field"><label for="sQ2">Segundo día de pago</label><input class="input num" id="sQ2" inputmode="numeric" value="${cf.q2||30}"></div></div>
    <div class="field" id="fDia"><label for="sDia">Día del mes en que te pagan</label><input class="input num" id="sDia" inputmode="numeric" value="${cf.diaMes||1}"><span class="hint">Si es fin de mes pon 30; en meses cortos se toma el último día.</span></div>
    <div class="field"><label for="sIng" id="lIng">Ingreso neto por pago</label><input class="input money num" id="sIng" inputmode="decimal" value="${cf.ingreso}"><span class="hint">Lo que realmente te llega cada vez que cobras, ya con descuentos.</span></div>
