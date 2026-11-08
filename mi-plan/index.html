@@ -425,6 +425,7 @@ function blockStatus(k, real, meta){
   if(meta<=0) return ["mute","Sin meta"];
   const r=real/meta; if(r>1) return ["bad","Excedido"]; if(r>=.85) return ["warn","Cerca del tope"]; return ["ok","Dentro del tope"];
 }
+function hasTope(n){ const a=S.config.subMonto, b=S.config.sub; return !!((a&&a[n]!=null&&a[n]!=='')||(b&&b[n]!=null&&b[n]!=='')); }
 function subTope(n,p0,meta){ const t=S.config.subMonto; return (t&&t[n]!=null&&t[n]!=='')?+t[n]:Math.round(meta*subP(n,p0)/100); }
 function subP(n,def){ const s=S.config.sub; return (s&&s[n]!=null&&s[n]!=="")?+s[n]:def; }
 function planItems(){
@@ -538,8 +539,8 @@ function gastoTemas(k,c){
   const b=BLOCKS[k], meta=c.metas[k], rows=b.cats.map(([n,p0])=>[n,c.bySub[n]||0,subTope(n,p0,meta)]).filter(x=>x[1]>0).sort((a,b)=>(b[1]-b[2])-(a[1]-a[2]));
   const btn=`<button class="btn ghost block" style="margin-top:8px;padding:9px" data-subedit="${k}">Poner mis topes en pesos</button>`;
   if(!rows.length) return `<div class="hint" style="margin-top:-6px">${k==="aho"?"Sin aportes":"Sin gastos"} en esta ${perName()}</div>`+btn;
-  return `<div style="margin-top:-6px">${rows.map(([n,v,t])=>{ const over=k!=="aho"&&v>t;
-    return `<div class="kv" data-tema="${esc(n)}" role="button" tabindex="0" style="flex-wrap:wrap;cursor:pointer"><span${over?' style="color:var(--bad);font-weight:700"':''}>${n}</span><span class="num"><b${over?' style="color:var(--bad)"':''}>${fmt(v)}</b> <span class="hint">de ${fmt(t)}</span></span></div>`; }).join("")}</div>`+btn;
+  return `<div style="margin-top:-6px">${rows.map(([n,v,t])=>{ const mine=hasTope(n), over=mine&&k!=="aho"&&v>t;
+    return `<div class="kv" data-tema="${esc(n)}" role="button" tabindex="0" style="flex-wrap:wrap;cursor:pointer"><span${over?' style="color:var(--bad);font-weight:700"':''}>${n}</span><span class="num"><b${over?' style="color:var(--bad)"':''}>${fmt(v)}</b> ${mine?`<span class="hint">de ${fmt(t)}</span>`:""}</span></div>`; }).join("")}</div>`+btn;
 }
 
 function vFondo(c){
