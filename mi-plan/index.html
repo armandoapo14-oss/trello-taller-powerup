@@ -540,7 +540,7 @@ function gastoTemas(k,c){
   const btn=`<button class="btn ghost block" style="margin-top:8px;padding:9px" data-subedit="${k}">Poner mis topes en pesos</button>`;
   if(!rows.length) return `<div class="hint" style="margin-top:-6px">${k==="aho"?"Sin aportes":"Sin gastos"} en esta ${perName()}</div>`+btn;
   return `<div style="margin-top:-6px">${rows.map(([n,v,t])=>{ const over=k!=="aho"&&v>t;
-    return `<div class="kv" style="flex-wrap:wrap"><span${over?' style="color:var(--bad);font-weight:700"':''}>${n}</span><span class="num"><b${over?' style="color:var(--bad)"':''}>${fmt(v)}</b> <span class="hint">de ${fmt(t)}</span></span>${over?`<span class="num" style="width:100%;font-size:12.5px;color:var(--bad);font-weight:600">Te pasaste ${fmt(v-t)}</span>`:""}</div>`; }).join("")}</div>`+btn;
+    return `<div class="kv" style="flex-wrap:wrap"><span${over?' style="color:var(--bad);font-weight:700"':''}>${n}</span><span class="num"><b${over?' style="color:var(--bad)"':''}>${fmt(v)}</b> <span class="hint">de ${fmt(t)}</span></span></div>`; }).join("")}</div>`+btn;
 }
 
 function vFondo(c){
