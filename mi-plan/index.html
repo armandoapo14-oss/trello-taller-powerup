@@ -535,8 +535,9 @@ function vPresu(c){
 }
 function gastoTemas(k,c){
   const b=BLOCKS[k], rows=b.cats.map(([n])=>[n,c.bySub[n]||0]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
-  if(!rows.length) return `<div class="hint" style="margin-top:-6px">${k==="aho"?"Sin aportes":"Sin gastos"} en esta ${perName()}</div>`;
-  return `<div style="margin-top:-6px">${rows.map(([n,v])=>`<div class="kv"><span>${n}</span><b class="num">${fmt(v)}</b></div>`).join("")}</div>`;
+  const btn=`<button class="btn ghost block" style="margin-top:8px;padding:9px" data-subedit="${k}">Ajustar % por tema</button>`;
+  if(!rows.length) return `<div class="hint" style="margin-top:-6px">${k==="aho"?"Sin aportes":"Sin gastos"} en esta ${perName()}</div>`+btn;
+  return `<div style="margin-top:-6px">${rows.map(([n,v])=>`<div class="kv"><span>${n}</span><b class="num">${fmt(v)}</b></div>`).join("")}</div>`+btn;
 }
 
 function vFondo(c){
@@ -850,13 +851,13 @@ function sheetMeta(idx){
 function sheetSub(k){
   const b=BLOCKS[k], meta=calc().metas[k];
   openSheet(`<div class="sheet-head"><h2>${b.name}</h2><button class="close" data-close aria-label="Cerrar">×</button></div>
-   <p class="hint" style="margin:0">Reparte el 100% de este bloque (${fmt(meta)} al mes) entre sus temas. Pon 0 en lo que no uses.</p>
+   <p class="hint" style="margin:0">Reparte el 100% de este bloque (${fmt(meta)}) entre sus temas (montos por ${perName()}). Pon 0 en lo que no uses.</p>
    <div>${b.cats.map(([n,p],i)=>`<div class="kv" style="align-items:center"><span><span style="color:var(--ink);font-weight:600">${n}</span><br><small class="num" id="sbm${i}"></small></span><input class="input num" style="width:86px;text-align:right" id="sb${i}" inputmode="numeric" value="${subP(n,p)}" aria-label="% de ${n}"></div>`).join("")}</div>
    <div class="hint num" id="sbSum"></div><div class="err" id="sbErr"></div>
    <button class="btn primary block" id="sbSave">Guardar</button>
    <button class="btn ghost block" id="sbReset">Volver a los valores sugeridos</button>`, sh=>{
     const vals=()=>b.cats.map((_,i)=>num(sh.querySelector("#sb"+i).value));
-    const upd=()=>{ const v=vals(), s=Math.round(v.reduce((a,x)=>a+x,0)*100)/100; v.forEach((x,i)=>sh.querySelector("#sbm"+i).textContent=fmt(meta*x/100)+" al mes"); sh.querySelector("#sbSum").textContent=`Suma: ${s}%`+(s===100?" ✓":` · ${s<100?"faltan "+(100-s):"sobran "+(s-100)} ${Math.abs(100-s)===1?"punto":"puntos"}`); return s; };
+    const upd=()=>{ const v=vals(), s=Math.round(v.reduce((a,x)=>a+x,0)*100)/100; v.forEach((x,i)=>sh.querySelector("#sbm"+i).textContent=fmt(meta*x/100)+" por "+perName()); sh.querySelector("#sbSum").textContent=`Suma: ${s}%`+(s===100?" ✓":` · ${s<100?"faltan "+(100-s):"sobran "+(s-100)} ${Math.abs(100-s)===1?"punto":"puntos"}`); return s; };
     sh.addEventListener("input",upd); upd();
     sh.querySelector("#sbSave").addEventListener("click",()=>{ if(upd()!==100){ sh.querySelector("#sbErr").textContent="Los porcentajes deben sumar 100%."; return; }
       const v=vals(); S.config.sub=Object.assign({},S.config.sub||{}); b.cats.forEach(([n],i)=>S.config.sub[n]=v[i]); saveMain(); closeSheet(); render(); toast("Porcentajes guardados"); });
