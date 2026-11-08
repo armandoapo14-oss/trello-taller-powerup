@@ -531,7 +531,12 @@ function vPresu(c){
   const cf=S.config;
   return `<section class="card"><div class="sec-head"><h2>Reparto ${perWord()}</h2><button class="link" data-act="cfg">Ajustes</button></div>
    <div class="hint num" style="margin-bottom:12px">${periodLabel(ym)} · cobro ${fmt(cf.ingreso)} · ${cf.pNec}/${cf.pOcio}/${cf.pAho}</div>
-   <div class="bars">${["nec","ocio","aho"].map(k=>barBlock(k,c)).join("")}</div></section>`+monthCard();
+   <div class="bars">${["nec","ocio","aho"].map(k=>barBlock(k,c)+gastoTemas(k,c)).join("")}</div></section>`+monthCard();
+}
+function gastoTemas(k,c){
+  const b=BLOCKS[k], rows=b.cats.map(([n])=>[n,c.bySub[n]||0]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  if(!rows.length) return `<div class="hint" style="margin-top:-6px">${k==="aho"?"Sin aportes":"Sin gastos"} en esta ${perName()}</div>`;
+  return `<div style="margin-top:-6px">${rows.map(([n,v])=>`<div class="kv"><span>${n}</span><b class="num">${fmt(v)}</b></div>`).join("")}</div>`;
 }
 
 function vFondo(c){
