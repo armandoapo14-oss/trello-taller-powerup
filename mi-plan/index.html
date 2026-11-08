@@ -529,13 +529,9 @@ function vMovs(c){
 
 function vPresu(c){
   const cf=S.config;
-  return `<section class="card"><div class="sec-head"><h2>Metas ${perWord()}</h2><button class="link" data-act="cfg">Cambiar %</button></div>
-   <div class="hint num">Ingreso por ${perName()} ${fmt(cf.ingreso)} · reparto ${cf.pNec}/${cf.pOcio}/${cf.pAho}</div></section>`+monthCard()+
-  (()=>{ const md=isPlainMonth()?null:monthData(); return (md?`<div class="label" style="margin-top:6px">Detalle por tema · mes completo (${md.rango})</div>`:"")+
-  ["nec","ocio","aho"].map(k=>{ const b=BLOCKS[k], src=md?{real:md.real,metas:md.metas,bySub:md.bySub}:c, meta=src.metas[k];
-    return `<section class="card">${barBlock(k,src)}<div style="margin-top:12px">${b.cats.map(([n,p0])=>{ const p=subP(n,p0), m=meta*p/100, r=src.bySub[n]||0, w=Math.min(100,m>0?r/m*100:0), over=k!=="aho"&&r>m&&m>0;
-      return `<div class="sub-row"><span class="n">${n} <span class="hint num">${p}%</span></span><span class="v num"><b>${fmt(r)}</b> / ${fmt(m)}</span><div class="track"><div class="fill" style="width:${w}%;background:${over?"var(--bad)":b.color}"></div></div></div>`;}).join("")}</div><button class="btn ghost block" style="margin-top:12px" data-subedit="${k}">Ajustar % por tema</button></section>`;}).join(""); })()+
-  `<p class="hint">Cada tema toma un porcentaje de su bloque (por ejemplo, Vivienda = 34% de Necesidades). ${isPlainMonth()?"":"Los temas se miden por mes completo porque la renta y los servicios se pagan una vez al mes; los tres bloques de arriba se miden por cada pago. "}Cámbialos con «Ajustar % por tema»; el reparto general se cambia en Ajustes.</p>`;
+  return `<section class="card"><div class="sec-head"><h2>Reparto ${perWord()}</h2><button class="link" data-act="cfg">Ajustes</button></div>
+   <div class="hint num" style="margin-bottom:12px">${periodLabel(ym)} · cobro ${fmt(cf.ingreso)} · ${cf.pNec}/${cf.pOcio}/${cf.pAho}</div>
+   <div class="bars">${["nec","ocio","aho"].map(k=>barBlock(k,c)).join("")}</div></section>`+monthCard();
 }
 
 function vFondo(c){
