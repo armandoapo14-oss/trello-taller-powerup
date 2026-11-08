@@ -540,7 +540,7 @@ function gastoTemas(k,c){
   const btn=`<button class="btn ghost block" style="margin-top:8px;padding:9px" data-subedit="${k}">Poner mis topes en pesos</button>`;
   if(!rows.length) return `<div class="hint" style="margin-top:-6px">${k==="aho"?"Sin aportes":"Sin gastos"} en esta ${perName()}</div>`+btn;
   return `<div style="margin-top:-6px">${rows.map(([n,v,t])=>{ const over=k!=="aho"&&v>t;
-    return `<div class="kv" style="flex-wrap:wrap"><span${over?' style="color:var(--bad);font-weight:700"':''}>${n}</span><span class="num"><b${over?' style="color:var(--bad)"':''}>${fmt(v)}</b> <span class="hint">de ${fmt(t)}</span></span></div>`; }).join("")}</div>`+btn;
+    return `<div class="kv" data-tema="${esc(n)}" role="button" tabindex="0" style="flex-wrap:wrap;cursor:pointer"><span${over?' style="color:var(--bad);font-weight:700"':''}>${n}</span><span class="num"><b${over?' style="color:var(--bad)"':''}>${fmt(v)}</b> <span class="hint">de ${fmt(t)}</span></span></div>`; }).join("")}</div>`+btn;
 }
 
 function vFondo(c){
@@ -851,6 +851,13 @@ function sheetMeta(idx){
   });
 }
 
+function sheetTema(n){
+  const list=calc().mes.filter(m=>m.tipo!=="ingreso"&&m.cat===n).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const tot=list.reduce((a,m)=>a+(+m.monto||0),0);
+  openSheet(`<div class="sheet-head"><h2>${esc(n)}</h2><button class="close" data-close aria-label="Cerrar">×</button></div>
+   <div class="hint num">${periodLabel(ym)} · ${list.length} ${list.length===1?"gasto":"gastos"} · total <b>${fmt(tot)}</b></div>
+   <div>${list.length?list.map(m=>`<div class="kv"><span><span style="color:var(--ink);font-weight:600">${esc(m.nota||"Sin nota")}</span><br><small>${dayLabel(m.fecha)}</small></span><b class="num">${fmt(m.monto)}</b></div>`).join(""):`<div class="empty">Sin gastos</div>`}</div>`);
+}
 function sheetSub(k){
   const b=BLOCKS[k], meta=calc().metas[k], ing=+S.config.ingreso||0;
   openSheet(`<div class="sheet-head"><h2>${b.name}</h2><button class="close" data-close aria-label="Cerrar">×</button></div>
@@ -919,6 +926,7 @@ async function exportCSV(){
 document.addEventListener("keydown",e=>{ const ed=e.target.closest&&e.target.closest("[data-edit]"); if(ed&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); sheetTask(ed.dataset.edit); } });
 document.addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]"); if(ed&&!ed.closest("#sheetRoot")){ sheetTask(ed.dataset.edit); return; }
+  const tm=e.target.closest("[data-tema]"); if(tm&&!tm.closest("#sheetRoot")){ sheetTema(tm.dataset.tema); return; }
   const t=e.target.closest("button"); if(!t||t.closest("#sheetRoot")) return;
   if(t.dataset.addtask!=null){ sheetTask(null,+t.dataset.addtask); return; }
   if(t.dataset.tab){ tab=t.dataset.tab; try{localStorage.setItem("mpf_tab",tab)}catch(_){} render(); window.scrollTo(0,0); return; }
